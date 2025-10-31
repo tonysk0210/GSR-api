@@ -284,7 +284,7 @@ public class Aca2003ServiceImpl implements Aca2003Service {
     }
 
     /**
-     * 依 ACACardNo 取得最新 SUP_AfterCare 或毒品濫用資料對應欄位。
+     * 依 ACACardNo 自動套用毒品濫用與後續關懷回退邏輯。
      * <p>
      * 流程：
      * 1) 檢核卡號並正規化空白。
@@ -293,10 +293,10 @@ public class Aca2003ServiceImpl implements Aca2003Service {
      * 4) 組裝 DTO（id 固定為 null，卡號回填為輸入值）。
      *
      * @param payload GeneralPayload<Aca2003QueryByCardPayload>
-     * @return DataDto<Aca2003QueryDto> 組合後的後續關懷資料
+     * @return DataDto<Aca2003QueryDto> 自動回退後的後續關懷資料
      */
     @Override
-    public DataDto<Aca2003QueryDto> queryDrugAfterCareByPersonalId(GeneralPayload<Aca2003QueryByCardPayload> payload) {
+    public DataDto<Aca2003QueryDto> queryAfterCareAutoFallbackByCardNo(GeneralPayload<Aca2003QueryByCardPayload> payload) {
         if (payload == null || payload.getData() == null || isBlank(payload.getData().getAcaCardNo())) {
             return new DataDto<>(null, new ResponseInfo(0, MSG_CARD_EMPTY));
         }

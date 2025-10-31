@@ -80,17 +80,17 @@ public class Aca2003Controller {
     }
 
     /**
-     * 查詢後續關懷資料 (依 ACACardNo)
+     * 查詢後續關懷資料 (依 ACACardNo 自動回退)
      * - 先檢查該卡號是否已有 AcaDrugUse 有效資料
      * - 有：直接沿用毒品濫用既有查詢；無：改以卡號映射 SUP_AfterCare
      *
      * @param payload GeneralPayload<Aca2003QueryByCardPayload>
      * @return DataDto<Aca2003QueryDto> 後續關懷欄位 DTO
      */
-    @PostMapping("/queryDrugAfterCareByPersonalId")
-    public ResponseEntity<DataDto<Aca2003QueryDto>> queryDrugAfterCareByPersonalId(@Valid @RequestBody GeneralPayload<Aca2003QueryByCardPayload> payload) {
+    @PostMapping("/queryAfterCareAutoFallbackByCardNo")
+    public ResponseEntity<DataDto<Aca2003QueryDto>> queryAfterCareAutoFallbackByCardNo(@Valid @RequestBody GeneralPayload<Aca2003QueryByCardPayload> payload) {
         // 服務層會先檢核卡號是否已有毒品濫用紀錄，必要時再回退 SUP_AfterCare
-        return ResponseEntity.ok(service.queryDrugAfterCareByPersonalId(payload));
+        return ResponseEntity.ok(service.queryAfterCareAutoFallbackByCardNo(payload));
     }
 
     /**
