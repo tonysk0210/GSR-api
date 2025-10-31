@@ -3,6 +3,8 @@ package com.hn2.cms.service.aca2003;
 import com.hn2.cms.dto.aca2003.Aca2003DetailView;
 import com.hn2.cms.dto.aca2003.Aca2003QueryDto;
 import com.hn2.cms.dto.aca2003.Aca2003SaveResponse;
+import com.hn2.cms.model.AcaBrdEntity;
+import com.hn2.cms.model.SupAfterCareEntity;
 import com.hn2.cms.model.aca2003.AcaDrugUseEntity;
 import com.hn2.cms.payload.aca2003.Aca2003DeletePayload;
 import com.hn2.cms.payload.aca2003.Aca2003QueryByCardPayload;
@@ -10,6 +12,7 @@ import com.hn2.cms.payload.aca2003.Aca2003QueryByIdPayload;
 import com.hn2.cms.payload.aca2003.Aca2003QueryByPersonalIdPayload;
 import com.hn2.cms.payload.aca2003.Aca2003SavePayload;
 import com.hn2.cms.repository.AcaBrdRepository;
+import com.hn2.cms.repository.SupAfterCareRepository;
 import com.hn2.cms.repository.aca2003.Aca2003Repository;
 import com.hn2.core.dto.DataDto;
 import com.hn2.core.dto.ResponseInfo;
@@ -19,6 +22,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.Optional;
@@ -50,17 +54,22 @@ public class Aca2003ServiceImpl implements Aca2003Service {
     private static final String MSG_DUP_ACTIVE = "相同「個案編號」的有效資料已存在";
     private static final String MSG_ACABRD_NOT_FOUND = "指定的「個案編號」(ACACardNo) 不存在於有效的 「個案基本資料」ACABrd";
     private static final String MSG_PERSONAL_ID_EMPTY = "personalId「個人身分證號」不可為空";
-    private static final String MSG_CARD_BY_PERSONAL_ID_NOT_FOUND = "personalId 查無對應 ACACardNo";
+    private static final String MSG_CARD_BY_PERSONAL_ID_NOT_FOUND = "身分證字號 查無對應 有效個案編號";
     private static final String MSG_MULTIPLE_CARDS_FOUND = "查到多筆有效個案編號，請聯絡系統管理員";
+    private static final String MSG_NAM_IDNO_EMPTY = "個案資料 缺少 身分證字號 欄位資料";
+    private static final String MSG_AFTER_CARE_NOT_FOUND = "查無矯正署資料";
+    private static final String MSG_CARD_NOT_FOUND = "個案編號不存在";
 
 
     private final Aca2003Repository repo;
     private final AcaBrdRepository acaBrdRepository;
+    private final SupAfterCareRepository supAfterCareRepository;
 
     @Autowired
-    public Aca2003ServiceImpl(Aca2003Repository repo, AcaBrdRepository acaBrdRepository) {
+    public Aca2003ServiceImpl(Aca2003Repository repo, AcaBrdRepository acaBrdRepository, SupAfterCareRepository supAfterCareRepository) {
         this.repo = repo;
         this.acaBrdRepository = acaBrdRepository;
+        this.supAfterCareRepository = supAfterCareRepository;
     }
 
     // ============================================================
@@ -275,6 +284,71 @@ public class Aca2003ServiceImpl implements Aca2003Service {
     }
 
     /**
+     * 依 ACACardNo 取得最新 SUP_AfterCare 或毒品濫用資料對應欄位。
+     * <p>
+     * 流程：
+     * 1) 檢核卡號並正規化空白。
+     * 2) 若 AcaDrugUse 已有有效資料，直接沿用 queryLatestByCardNo。
+     * 3) 若無，則以卡號查 ACABrd → 取得 NAM_IDNO → 查 SUP_AfterCare。
+     * 4) 組裝 DTO（id 固定為 null，卡號回填為輸入值）。
+     *
+     * @param payload GeneralPayload<Aca2003QueryByCardPayload>
+     * @return DataDto<Aca2003QueryDto> 組合後的後續關懷資料
+     */
+    @Override
+    public DataDto<Aca2003QueryDto> queryDrugAfterCareByPersonalId(GeneralPayload<Aca2003QueryByCardPayload> payload) {
+        if (payload == null || payload.getData() == null || isBlank(payload.getData().getAcaCardNo())) {
+            return new DataDto<>(null, new ResponseInfo(0, MSG_CARD_EMPTY));
+        }
+        // 正規化卡號，避免後端查詢受到多餘空白影響
+        final String cardNo = payload.getData().getAcaCardNo().trim();
+        payload.getData().setAcaCardNo(cardNo);
+
+        // 若 AcaDrugUse 已有有效資料，直接沿用既有查詢流程，確保行為一致
+        if (repo.existsActiveByCardNo(cardNo) > 0) {
+            return queryLatestByCardNo(payload);
+        }
+
+        // 回退 SUP_AfterCare 流程：先依卡號取 ACABrd 基本資料
+        Optional<AcaBrdEntity> acaOpt = acaBrdRepository.findTopActiveByAcaCardNo(cardNo);
+        if (acaOpt.isEmpty()) {
+            return new DataDto<>(null, new ResponseInfo(0, MSG_CARD_NOT_FOUND));
+        }
+        var aca = acaOpt.get();
+
+        // NAM_IDNO 為查詢後續關懷的關鍵欄位，若缺失則視為資料品質問題
+        String namIdNo = trim(aca.getAcaIdNo());
+        if (isBlank(namIdNo)) {
+            return new DataDto<>(null, new ResponseInfo(0, MSG_NAM_IDNO_EMPTY));
+        }
+
+        Optional<SupAfterCareEntity> afterCareOpt = supAfterCareRepository.findTopByNamIdNoOrderByCrDateTimeDesc(namIdNo);
+        if (afterCareOpt.isEmpty()) {
+            return new DataDto<>(null, new ResponseInfo(0, MSG_AFTER_CARE_NOT_FOUND));
+        }
+        var afterCare = afterCareOpt.get();
+
+        // 組裝回傳 DTO，id 固定為 null（避免誤以為來自 AcaDrugUse）
+        Aca2003QueryDto dto = new Aca2003QueryDto();
+        dto.setId(null);
+        dto.setCreatedOnDate(toTimestamp(afterCare.getCrDateTime()));
+        dto.setCreatedByBranchName(trim(afterCare.getProtName()));
+        dto.setDrgUserText(trimToNull(afterCare.getDrgUserText()));
+        dto.setOprFamilyText(trimToNull(afterCare.getOprFamilyText()));
+        dto.setOprFamilyCareText(trimToNull(afterCare.getOprFamilyCareText()));
+        dto.setOprSupportText(trimToNull(afterCare.getOprSupportText()));
+        dto.setOprContactText(trimToNull(afterCare.getOprContactText()));
+        dto.setOprReferText(trimToNull(afterCare.getOprReferText()));
+        dto.setAddr(trimToNull(afterCare.getAddr()));
+        dto.setOprAddr(trimToNull(afterCare.getOprAddr()));
+        dto.setAcaCardNo(cardNo);
+        dto.setAcaName(trim(aca.getAcaName()));
+        dto.setAcaIdNo(trim(aca.getAcaIdNo()));
+
+        return new DataDto<>(dto, new ResponseInfo(1, "查詢成功"));
+    }
+
+    /**
      * 將 Projection 轉為 DTO（Controller 統一輸出此 DTO）
      */
     private Aca2003QueryDto toDto(Aca2003DetailView v) {
@@ -356,6 +430,13 @@ public class Aca2003ServiceImpl implements Aca2003Service {
      */
     private static Timestamp now() {
         return new Timestamp(System.currentTimeMillis());
+    }
+
+    /**
+     * 將 LocalDate 轉為 Timestamp，統一集中轉換邏輯。
+     */
+    private static Timestamp toTimestamp(LocalDate date) {
+        return date == null ? null : Timestamp.valueOf(date.atStartOfDay());
     }
 
     private static boolean isBlank(String s) {

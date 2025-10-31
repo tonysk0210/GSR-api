@@ -82,7 +82,7 @@ public class SupAfterCareEntity {
 
     /** 身分證號 */
     @Column(name = "NAM_IDNO")
-    private String namIdno;
+    private String namIdNo;
 
     /** 戶籍地址 */
     @Column(name = "NAM_HADDR_TEXT")
@@ -171,6 +171,38 @@ public class SupAfterCareEntity {
     /** 聯絡人地址 */
     @Column(name = "RELD_ADDR")
     private String reldAddr;
+
+    /** 毒品使用情形描述 */
+    @Column(name = "DRG_USER_TEXT")
+    private String drgUserText;
+
+    /** 家庭情形描述 */
+    @Column(name = "OPR_FAMILY_TEXT")
+    private String oprFamilyText;
+
+    /** 家庭照顧情況描述 */
+    @Column(name = "OPR_FAMILYCARE_TEXT")
+    private String oprFamilyCareText;
+
+    /** 支持網絡情況描述 */
+    @Column(name = "OPR_SUPPORT_TEXT")
+    private String oprSupportText;
+
+    /** 聯絡情況描述 */
+    @Column(name = "OPR_CONTACT_TEXT")
+    private String oprContactText;
+
+    /** 轉介情況描述 */
+    @Column(name = "OPR_REFER_TEXT")
+    private String oprReferText;
+
+    /** 居住地址 */
+    @Column(name = "ADDR")
+    private String addr;
+
+    /** 其他地址／接觸地點 */
+    @Column(name = "OPR_ADDR")
+    private String oprAddr;
 
     /** 簽收狀態(0:未簽收 1:已簽收) */
     @Column(name = "SIGN_STATE")

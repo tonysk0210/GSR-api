@@ -38,8 +38,15 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
 # 執行特定模組測試
 ./gradlew :hnsquare-cms:test
 
+# 執行單一測試類別或方法
+./gradlew :hnsquare-cms:test --tests "com.hn2.cms.service.aca2003.Aca2003ServiceTest"
+./gradlew :hnsquare-cms:test --tests "com.hn2.cms.service.aca2003.Aca2003ServiceTest.testQueryByPersonalId"
+
 # 本地啟動 API（使用預設 profile）
 ./gradlew hnsquare-app-api:bootRun
+
+# 本地啟動並指定 profile 與除錯模式
+./gradlew hnsquare-app-api:bootRun --args='--spring.profiles.active=dev' --debug-jvm
 
 # 產生環境別 WAR 檔（會設定 spring.profiles.active）
 ./gradlew hnsquare-app-api:dev    # 開發環境 api.war
@@ -48,6 +55,9 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
 
 # 診斷測試失敗
 ./gradlew test --info
+
+# 檢視專案依賴樹
+./gradlew :hnsquare-cms:dependencies
 ```
 
 **重要**：產生 WAR 時，Gradle 任務會自動修改 `application.properties` 中的 `spring.profiles.active`。
@@ -83,6 +93,12 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
 - 使用 Swagger 文件化（`@Api`、`@ApiOperation`、`@ApiModel`、`@ApiModelProperty`）
 - Controller、DTO、Payload 必須加上 Swagger 註解
 
+### Response 標準化
+- 使用 `ResponseInfo` 與 `DataPayload`/`PagePayload` 回傳資料
+- 成功回應：`ResponseInfo.ok(data)` 或 `ResponseInfo.ok()`
+- 錯誤回應：由 `RestExceptionHandler` 統一處理，拋出 `BusinessException` 並指定 `ErrorType`
+- 分頁查詢：使用 `PagePayload`，包含 `PageInfo`（總筆數、總頁數、當前頁）與資料清單
+
 ## Configuration & Security
 
 - 環境設定檔位於 `hnsquare-app-api/src/main/resources/`
@@ -92,6 +108,25 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
   - `application-prod.properties`：正式環境
 - 敏感資訊使用 `jasypt-spring-boot-starter` 加密，**絕不可將明文密碼提交至 Git**
 - 資料庫連線使用 Log4jdbc 包裝：`jdbc:log4jdbc:sqlserver://...`
+
+## Data Access Layer Strategy
+
+專案同時使用 JPA/Hibernate 與 Sql2o，選擇策略如下：
+
+- **優先使用 JPA/Hibernate**：
+  - 簡單 CRUD 操作
+  - 需要實體關聯管理（OneToMany、ManyToOne）
+  - 需要事務管理與 Dirty Checking
+  - Repository 繼承 `JpaRepository<Entity, ID>`
+
+- **使用 Sql2o 情境**：
+  - 複雜原生查詢（多表 JOIN、聚合運算、動態條件）
+  - 效能關鍵查詢（避免 N+1 問題）
+  - 需要精確控制 SQL 語句
+  - 查詢結果映射至 DTO（使用 SimpleFlatMapper）
+  - RepositoryImpl 注入 `Sql2o` bean，使用 `connection.createQuery()`
+
+**重要**：Sql2o 查詢結果不受 JPA 管理，無法使用 Lazy Loading 與 Dirty Checking。
 
 ## Testing
 
@@ -120,6 +155,32 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
 - Apache HttpClient 5.2.1
 - Log4jdbc 1.2
 
+## Special Features
+
+### 資料塗銷與還原機制（Erase/Restore）
+
+位於 `hnsquare-cms` 的 `aca4001` 模組，提供敏感資料塗銷與還原功能：
+
+- **核心元件**：
+  - `GenericEraseService`：統一的塗銷/還原服務
+  - `EraseRestoreExecutor`：規則引擎執行器
+  - `AesGcmCrypto`：AES-GCM 加密與 SHA-256 雜湊
+  - `EraseTableConfigPojo`：各表的塗銷規則配置（位於 `rules/tableConfig/`）
+
+- **資料庫表**：
+  - `ACA_EraseMirror`：塗銷前的加密鏡像資料
+  - `ACA_EraseAudit`：塗銷/還原操作稽核記錄
+
+- **運作流程**：
+  1. **塗銷（Erase）**：依規則將原表敏感欄位內容加密存入鏡像表 → 清空原表欄位 → 記錄稽核
+  2. **還原（Restore）**：從鏡像表解密資料 → 寫回原表 → 刪除鏡像 → 記錄稽核
+
+- **新增塗銷規則**：
+  1. 在 `rules/tableConfig/` 建立新的 Config 類別，實作 `EraseTableConfigPojo`
+  2. 定義表名、主鍵、待塗銷欄位、關聯查詢 SQL
+  3. 實作 `toRowAction()` 方法，產生 `EraseCommand.RowAction`
+  4. Config 類別使用 `@Component` 自動注入至 `GenericEraseService`
+
 ## Common Development Workflows
 
 **新增 API 端點（例如新增個案資料）**:
@@ -137,6 +198,13 @@ Spring Boot 2.7.14 多模組專案（Java 11），使用 Gradle 管理依賴與�
 2. 更新相關類別與測試
 3. 確認 Swagger 文件更新
 4. 執行測試並檢查副作用
+
+**新增資料塗銷規則**：
+1. 在 `hnsquare-cms/src/main/java/com/hn2/cms/service/aca4001/erase/rules/tableConfig/` 建立新 Config
+2. 實作 `EraseTableConfigPojo` 介面，定義表名、主鍵、塗銷欄位
+3. 實作 `toRowAction()` 與 `selectRowsByCardNo()` 方法
+4. 使用 `@Component` 註冊至 Spring IoC
+5. 測試塗銷與還原流程
 
 **環境部署**:
 1. 確認目標環境設定檔（`application-{dev,uat,prod}.properties`）已正確配置

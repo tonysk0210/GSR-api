@@ -17,6 +17,18 @@ public interface AcaBrdRepository extends JpaRepository<AcaBrdEntity, String> {
     @Query(value = "SELECT ACACardNo FROM dbo.ACABrd WITH (NOLOCK) WHERE ACAIDNo = :personalId AND (IsDeleted = 0 OR IsDeleted IS NULL) ORDER BY CreatedOnDate DESC", nativeQuery = true)
     List<String> findActiveCardNosByPersonalId(@Param("personalId") String personalId);
 
+    /**
+     * 依 ACAIDNo 取得最新一筆有效個案資料，提供後續 NAM_IDNO 映射 SUP_AfterCare。
+     */
+    @Query(value = "SELECT TOP 1 * FROM dbo.ACABrd WITH (NOLOCK) WHERE ACAIDNo = :personalId AND (IsDeleted = 0 OR IsDeleted IS NULL) ORDER BY CreatedOnDate DESC", nativeQuery = true)
+    Optional<AcaBrdEntity> findTopActiveByPersonalId(@Param("personalId") String personalId);
+
+    /**
+     * 依 ACACardNo 取得最新一筆有效個案資料，供卡號反查 SUP_AfterCare。
+     */
+    @Query(value = "SELECT TOP 1 * FROM dbo.ACABrd WITH (NOLOCK) WHERE ACACardNo = :cardNo AND (IsDeleted = 0 OR IsDeleted IS NULL) ORDER BY CreatedOnDate DESC", nativeQuery = true)
+    Optional<AcaBrdEntity> findTopActiveByAcaCardNo(@Param("cardNo") String cardNo);
+
     @Query(value = "select RIGHT(REPLICATE('0', 5) + CAST( isnull(SUBSTRING(max(id),8,5),0)        + 1 AS VARCHAR(5)), 5) as id     from ACABrd where id like :findKey", nativeQuery = true)
     String genNewId(String findKey);
 

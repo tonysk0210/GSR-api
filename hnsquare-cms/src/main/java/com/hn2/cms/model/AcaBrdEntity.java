@@ -38,7 +38,7 @@ public class AcaBrdEntity {
     // 國民身分證統一編號
     @Column(name = "ACAIDNo")
     private String acaIdNo;
-
+    
     // 國籍
     @Column(name = "ACA_Nationality")
     private String acaNationality;

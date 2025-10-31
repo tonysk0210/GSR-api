@@ -80,6 +80,20 @@ public class Aca2003Controller {
     }
 
     /**
+     * 查詢後續關懷資料 (依 ACACardNo)
+     * - 先檢查該卡號是否已有 AcaDrugUse 有效資料
+     * - 有：直接沿用毒品濫用既有查詢；無：改以卡號映射 SUP_AfterCare
+     *
+     * @param payload GeneralPayload<Aca2003QueryByCardPayload>
+     * @return DataDto<Aca2003QueryDto> 後續關懷欄位 DTO
+     */
+    @PostMapping("/queryDrugAfterCareByPersonalId")
+    public ResponseEntity<DataDto<Aca2003QueryDto>> queryDrugAfterCareByPersonalId(@Valid @RequestBody GeneralPayload<Aca2003QueryByCardPayload> payload) {
+        // 服務層會先檢核卡號是否已有毒品濫用紀錄，必要時再回退 SUP_AfterCare
+        return ResponseEntity.ok(service.queryDrugAfterCareByPersonalId(payload));
+    }
+
+    /**
      * 軟刪除 (Soft Delete)
      * - 將指定紀錄的 isDeleted 欄位設為 1
      * - 保留資料於 DB，不做物理刪除

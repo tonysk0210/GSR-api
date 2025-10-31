@@ -149,7 +149,7 @@ public class Aca1002ServiceImpl implements Aca1002Service {
         SupAfterCareEntity namData = supAfterCareRepository.findById(itemId).orElseThrow( () -> new BusinessException(("查不到資料")));
 
         //2.查詢出B:個案資料 鈄過查矯正署資料 身分證及簽收機關查詢個案
-        Optional<AcaBrdEntity> acaData = acaBrdRepository.findByAcaIdNo( namData.getNamIdno());
+        Optional<AcaBrdEntity> acaData = acaBrdRepository.findByAcaIdNo( namData.getNamIdNo());
 
 
         Aca1002ComparyAcaDto ComparyAca = new Aca1002ComparyAcaDto();
@@ -173,7 +173,7 @@ public class Aca1002ServiceImpl implements Aca1002Service {
         //1.查詢出A:矯正署資料 透過 itemId 查矯正署資料
         SupAfterCareEntity namData = supAfterCareRepository.findById(itemId).orElseThrow( () -> new BusinessException(("查不到資料")));
         //2.查詢出B:個案資料 鈄過查矯正署資料 身分證及簽收機關查詢個案
-        AcaBrdEntity acaData = (AcaBrdEntity) acaBrdRepository.findByAcaIdNo( namData.getNamIdno())
+        AcaBrdEntity acaData = (AcaBrdEntity) acaBrdRepository.findByAcaIdNo( namData.getNamIdNo())
                 .orElseThrow( () -> new BusinessException(("查不到資料")));
 
 

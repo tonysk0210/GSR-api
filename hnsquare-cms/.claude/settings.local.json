@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Users/anthony.shangkuan/Desktop/GSR/api/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -47,6 +47,20 @@ public interface Aca2003Repository extends JpaRepository<AcaDrugUseEntity, Integ
     long countActive(@Param("cardNo") String cardNo);
 
     /**
+     * 判斷是否存在有效的毒品濫用資料（IsDeleted、isERASE 皆須為 0 或 NULL）。
+     *
+     * @param cardNo ACACardNo
+     * @return 1 表示存在有效資料，0 表示不存在
+     */
+    @Query(value = "SELECT CASE WHEN EXISTS (" +
+            "  SELECT 1 FROM dbo.AcaDrugUse WITH (NOLOCK) " +
+            "  WHERE ACACardNo = :cardNo " +
+            "    AND (IsDeleted = 0 OR IsDeleted IS NULL) " +
+            "    AND (isERASE = 0 OR isERASE IS NULL)" +
+            ") THEN 1 ELSE 0 END", nativeQuery = true)
+    int existsActiveByCardNo(@Param("cardNo") String cardNo);
+
+    /**
      * ACABrd 是否存在且有效（IsDeleted=0）
      * 用途：save 時的應用層一致性檢查。
      */

@@ -26,5 +26,15 @@ public interface Aca2003Service {
      */
     DataDto<Aca2003QueryDto> queryByPersonalId(GeneralPayload<Aca2003QueryByPersonalIdPayload> payload);
 
+    /**
+     * 依 ACACardNo 查詢後續關懷資料：
+     * 1) 若卡號已有 AcaDrugUse 有效資料，沿用最新卡號查詢邏輯；
+     * 2) 若無，則以卡號映射 ACABrd 與 SUP_AfterCare 取得資料。
+     *
+     * @param payload GeneralPayload<Aca2003QueryByCardPayload>
+     * @return DataDto<Aca2003QueryDto> 後續關懷欄位組成之 DTO
+     */
+    DataDto<Aca2003QueryDto> queryDrugAfterCareByPersonalId(GeneralPayload<Aca2003QueryByCardPayload> payload);
+
     DataDto<Aca2003SaveResponse> softDelete(GeneralPayload<Aca2003DeletePayload> payload);
 }
