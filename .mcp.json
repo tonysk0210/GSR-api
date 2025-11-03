@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "sql-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@executeautomation/database-server",
+        "--sqlserver",
+        "--server",
+        "192.168.1.112",
+        "--port",
+        "1433",
+        "--database",
+        "master",
+        "--user",
+        "27A38",
+        "--password",
+        "hn2#1234"
+      ]
+    }
+  }
+}
