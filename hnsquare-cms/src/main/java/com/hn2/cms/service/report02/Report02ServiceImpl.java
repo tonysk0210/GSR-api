@@ -76,6 +76,7 @@ public class Report02ServiceImpl implements Report02Service {
             // 4-1) 把每列轉為 orgs[]；排序規則：orgCode 由小到大
             //      先嘗試整數比較，失敗（含字母）再用字串比較
             List<Report02Dto.Org> orgs = list.stream()
+                    .filter(r -> r.getOrgCode() != null) // 🔸 新增這行，避免 null 機關出現在 orgs
                     .map(r -> Report02Dto.Org.builder()
                             .orgCode(r.getOrgCode())
                             .orgName(Optional.ofNullable(r.getOrgName()).orElse("")) // JOIN 對不到時以空字串
