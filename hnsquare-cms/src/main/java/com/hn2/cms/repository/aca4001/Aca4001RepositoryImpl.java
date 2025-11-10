@@ -440,6 +440,7 @@ public class Aca4001RepositoryImpl implements Aca4001Repository {
                 npJdbc.query(sql, params, (rs, i) -> {
                     String id = rs.getString("id");
                     var dto = new Aca4001EraseQueryDto.ACADrugUse();
+                    dto.setId(id); // ✅ 加上這行，DTO 就會包含主鍵
                     // recordDate -> 民國 yyy/MM/dd（若為 null 則回 null）
                     java.sql.Date d1 = rs.getDate("RecordDate");
                     dto.setRecordDate(d1 == null ? null : DateUtil.date2Roc(DateUtil.date2LocalDate(d1), yyyMMdd_slash));

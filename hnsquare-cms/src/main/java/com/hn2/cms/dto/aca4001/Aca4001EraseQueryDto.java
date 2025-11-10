@@ -74,6 +74,7 @@ public class Aca4001EraseQueryDto {
 
     @Data
     public static class ACADrugUse {
+        private String id;
         private String recordDate;         // CreatedOnDate -> 民國 yyy/MM/dd
         private String branchName;           // 分會 Lists.Text(ParentID=26, Value=AcaDrugUse.createdByBranchID)
         private String drgUserText;          // 施用毒品
